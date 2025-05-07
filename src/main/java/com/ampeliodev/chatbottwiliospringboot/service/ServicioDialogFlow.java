@@ -34,18 +34,17 @@ public class ServicioDialogFlow {
 
     public ServicioDialogFlow() throws IOException {
         String credentialsJson = System.getenv("GOOGLE_CREDENTIALS_JSON");
-        if (credentialsJson == null) {
-            throw new IllegalStateException("No se encontró la variable de entorno GOOGLE_CREDENTIALS_JSON");
+        if (credentialsJson == null || credentialsJson.isEmpty()) {
+            throw new IllegalStateException("No se encontró la variable de entorno GOOGLE_CREDENTIALS_JSON o está vacía.");
         }
 
-        InputStream credentialsStream = new ByteArrayInputStream(credentialsJson.getBytes(StandardCharsets.UTF_8));
-        GoogleCredentials credentials = GoogleCredentials.fromStream(credentialsStream);
-
-        SessionsSettings sessionsSettings = SessionsSettings.newBuilder()
-                .setCredentialsProvider(FixedCredentialsProvider.create(credentials))
-                .build();
-
-        this.sessionsClient = SessionsClient.create(sessionsSettings);
+        try (InputStream credentialsStream = new ByteArrayInputStream(credentialsJson.getBytes(StandardCharsets.UTF_8))) {
+            GoogleCredentials credentials = GoogleCredentials.fromStream(credentialsStream);
+            SessionsSettings sessionsSettings = SessionsSettings.newBuilder()
+                    .setCredentialsProvider(FixedCredentialsProvider.create(credentials))
+                    .build();
+            this.sessionsClient = SessionsClient.create(sessionsSettings);
+        }
     }
 
 
