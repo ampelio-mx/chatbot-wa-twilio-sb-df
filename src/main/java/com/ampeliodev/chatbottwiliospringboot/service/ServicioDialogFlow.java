@@ -10,7 +10,11 @@ import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.core.io.ClassPathResource;
 import org.springframework.stereotype.Service;
 import com.google.protobuf.Value;
+
+import java.io.ByteArrayInputStream;
+import java.io.IOException;
 import java.io.InputStream;
+import java.nio.charset.StandardCharsets;
 import java.time.LocalDate;
 import java.time.Month;
 import java.util.HashMap;
@@ -28,11 +32,19 @@ public class ServicioDialogFlow {
     private final String sessionId = "default-session";
 
 
-    public ServicioDialogFlow() throws Exception {
-        GoogleCredentials credentials = GoogleCredentials.getApplicationDefault();
+    public ServicioDialogFlow() throws IOException {
+        String credentialsJson = System.getenv("GOOGLE_CREDENTIALS_JSON");
+        if (credentialsJson == null) {
+            throw new IllegalStateException("No se encontró la variable de entorno GOOGLE_CREDENTIALS_JSON");
+        }
+
+        InputStream credentialsStream = new ByteArrayInputStream(credentialsJson.getBytes(StandardCharsets.UTF_8));
+        GoogleCredentials credentials = GoogleCredentials.fromStream(credentialsStream);
+
         SessionsSettings sessionsSettings = SessionsSettings.newBuilder()
                 .setCredentialsProvider(FixedCredentialsProvider.create(credentials))
                 .build();
+
         this.sessionsClient = SessionsClient.create(sessionsSettings);
     }
 
