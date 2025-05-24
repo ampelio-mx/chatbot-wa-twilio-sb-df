@@ -128,27 +128,9 @@ public class ServicioDialogFlow {
     }
 
     //metodo para convertir dia y mes enviado en fecha y consultar en la BD
-    public List<EntidadCita> consultarHorariosDisponibles(String dia, String mes) {
+    public List<EntidadCita> consultarHorariosDisponibles(int dia, int mes, int anio) {
 
-        int ano = 2025;
-
-        Map<String, Integer> mesANumero = new HashMap<>();
-        mesANumero.put("enero",1);
-        mesANumero.put("febrero",2);
-        mesANumero.put("marzo",3);
-        mesANumero.put("april",4);
-        mesANumero.put("mayo",5);
-        mesANumero.put("junio",6);
-        mesANumero.put("julio",7);
-        mesANumero.put("augusto",8);
-        mesANumero.put("septiembre",9);
-        mesANumero.put("octubre",10);
-        mesANumero.put("noviembre",11);
-        mesANumero.put("diciembre",12);
-
-        int mesInt = mesANumero.get(mes.toLowerCase());
-
-        LocalDate fecha = LocalDate.of(ano, mesInt, Integer.parseInt(dia));
+        LocalDate fecha = LocalDate.of(anio, mes, dia);
 
         return daoCitas.findByFechaAndDisponibleTrue(fecha);
 

@@ -75,28 +75,84 @@ public class ControladorTwilio {
 
             DetectIntentResponse mensajeCompletoDialogFlow = servicioDialogFlow.detectIntent(mensajeUsuario);
             String nombreDelIntent = mensajeCompletoDialogFlow.getQueryResult().getIntent().getDisplayName();
-
+            System.out.println("controlador, sesión nula");
             // Flujos según etapa del usuario
+
+
             switch (datosSesion.getEtapa()) {
 
+                case "ESPERANDO_MES":
+
+                    int mensajeMes = Integer.parseInt(mensajeUsuario);
+                    datosSesion.setMes(mensajeMes);
+                    datosSesion.setEtapa("ESPERANDO_DIA");
+                    servicioSesion.guardarSesion(telefonoUsuario, datosSesion);
+                    respuestaDevueltaTexto = "Bien, indicame por favor el día";
+
+                    break;
+
+                case "ESPERANDO_DIA":
+
+                    int mensajeDia = Integer.parseInt(mensajeUsuario);
+                    datosSesion.setDia(mensajeDia);
+                    datosSesion.setEtapa("ESPERANDO_ANIO");
+                    servicioSesion.guardarSesion(telefonoUsuario, datosSesion);
+                    respuestaDevueltaTexto = "Bien, indicame por favor el año";
+
+                    break;
+
+                case "ESPERANDO_ANIO":
+
+                    int mensajeAnio = Integer.parseInt(mensajeUsuario);
+                    datosSesion.setAnio(mensajeAnio);
+
+                    servicioSesion.guardarSesion(telefonoUsuario, datosSesion);
+
+                    int dia = datosSesion.getDia();
+                    int mes = datosSesion.getMes();
+                    int anio = datosSesion.getAnio();
+
+                    List<EntidadCita> horariosDisponibles = servicioDialogFlow.consultarHorariosDisponibles(dia, mes, anio);
+
+                    StringBuilder mensaje = new StringBuilder();
+
+                    if (horariosDisponibles.isEmpty()) {
+                        mensaje.append("Lo siento, no hay horarios disponibles para esa fecha.\n\nIngresa otro día, por favor...");
+                        datosSesion.setEtapa("ESPERANDO_DIA");
+                    } else {
+                        datosSesion.setListaHorariosDisponibles(horariosDisponibles);
+                        datosSesion.setEtapa("ESPERANDO_HORA");
+                        DateTimeFormatter formatter = DateTimeFormatter.ofPattern("hh:mm a");
+                        for (EntidadCita cita : horariosDisponibles) {
+                            mensaje.append("• ").append(cita.getHora().format(formatter)).append("\n");
+                        }
+                        mensaje.append("\n\nIndícame por favor, ¿A qué hora te gustaría tu cita?");
+                        mensaje.append("\n\n(Ingresa el horario con formato de 4 dígitos, sin letras (p.e. 09:00 o 14:00)");
+                    
+                    }
+
+                    respuestaDevueltaTexto = "gracias mensaje enviado prueba";
+                        break;
 
                 case "ESPERANDO_HORA":
 
-                    Map<String, String> parametrosCita = servicioDialogFlow.obtenerParametrosIntent(mensajeCompletoDialogFlow);
-                    String hora = parametrosCita.get("hora");
+                    System.out.println("case ESPERANDO_HORA");
+                    System.out.println("mensaje del usuario con la hora" + mensajeUsuario);
+
+                    String hora = mensajeUsuario;
 
                     // Normalizar la cadena (eliminar espacios y convertir a formato 24h si es necesario)
-                    hora = hora.replace(" ", "").toUpperCase(); // "9AM" → "09:00:00"
+                    hora = hora.replace(" ", ""); // "9AM" → "09:00:00"
 
-// Si tiene AM/PM, convertir a formato 24h
-                    if (hora.contains("AM") || hora.contains("PM")) {
-                        DateTimeFormatter formato12h = DateTimeFormatter.ofPattern("hha");
-                        LocalTime horaTemporal = LocalTime.parse(hora, formato12h);
-                        hora = horaTemporal.format(DateTimeFormatter.ofPattern("HH:mm:ss"));
+                    StringBuilder mensajes = new StringBuilder();
+
+                    // Si tiene AM/PM, convertir a formato 24h
+                    if (!hora.matches("^([01]\\d|2[0-3]):[0-5]\\d$")) {
+                        mensajes.append("Formato inválido. Ingresa el horario en formato HH:mm (ej. 09:00 o 14:00).");
                     }
 
-// Parsear a LocalTime
-                    LocalTime horaR = LocalTime.parse(hora, DateTimeFormatter.ofPattern("HH:mm:ss"));
+                    // Parsear a LocalTime
+                    LocalTime horaR = LocalTime.parse(hora, DateTimeFormatter.ofPattern("HH:mm"));
 
                     datosSesion.setHora(horaR); //como mensajeUsuario se va a asigar a variable LocalTime
                     datosSesion.setEtapa("ESPERANDO_NOMBRE");
@@ -113,13 +169,35 @@ public class ControladorTwilio {
 
                 case "ESPERANDO_APELLIDO":
                     datosSesion.setApellido(mensajeUsuario);
+                    datosSesion.setEtapa("ESPERANDO_TELEFONO");
+                    servicioSesion.guardarSesion(telefonoUsuario, datosSesion);
+                    respuestaDevueltaTexto = "¿Me podrías indica tu teléfono a 10 dígitos?";
+                    break;
+
+                case "ESPERANDO_TELEFONO":
+                    datosSesion.setTelefono(mensajeUsuario);
+                    datosSesion.setEtapa("ESPERANDO_EMAIL");
+                    servicioSesion.guardarSesion(telefonoUsuario, datosSesion);
+                    respuestaDevueltaTexto = "Por último, ¿Me puedes indicar tu email?";
+                    break;
+
+                case "ESPERANDO_EMAIL":
+                    datosSesion.setEmail(mensajeUsuario);
                     datosSesion.setEtapa("COMPLETADO");
                     servicioSesion.guardarSesion(telefonoUsuario, datosSesion);
+
+                    StringBuilder mensajeConfirmacionCita = new StringBuilder();
+                    mensajeConfirmacionCita.append("\n\n Te confirmo los datos de tu cita.\n\nIngresa otro día, por favor...");
+                    String nombre = datosSesion.getNombre();
+                    String apellido = datosSesion.getApellido();
+
+                    System.out.println("nombre guardado: " +nombre + "apellido guardado: " + apellido);
 
                     // Aquí puedes guardar en base de datos
                     // servicioCita.guardar(datosSesion);
                     respuestaDevueltaTexto = "¡Listo! Tu cita ha sido agendada. Gracias.";
                     break;
+
 
                 default:
                     respuestaDevueltaTexto = "Lo siento, no entendí. ¿Puedes repetirlo?";
@@ -136,33 +214,16 @@ public class ControladorTwilio {
 
             switch (nombreDelIntent) {
 
-                case "establecer_dia_cita":
-                    Map<String, String> parametrosCita = servicioDialogFlow.obtenerParametrosIntent(mensajeCompletoDialogFlow);
-                    String dia = parametrosCita.get("dia");
-                    String mes = parametrosCita.get("mes");
-
-                    List<EntidadCita> horariosDisponibles = servicioDialogFlow.consultarHorariosDisponibles(dia, mes);
-
-                    StringBuilder mensaje = new StringBuilder();
-
-                    if (horariosDisponibles.isEmpty()) {
-                        mensaje.append("Lo siento, no hay horarios disponibles para esa fecha.\n\nIngresa otro día, por favor...");
-                    } else {
+                case "solicitud_servicio_cita":
 
                         DtoCita dtoNuevaSesion = new DtoCita();
-                        dtoNuevaSesion.setListaHorariosDisponibles(horariosDisponibles);
-                        dtoNuevaSesion.setEtapa("ESPERANDO_HORA");
+                        dtoNuevaSesion.setEtapa("ESPERANDO_MES");
                         servicioSesion.guardarSesion(telefonoUsuario, dtoNuevaSesion);
 
-                        mensaje.append("Los horarios disponibles para esa fecha son:\n\n");
-                        DateTimeFormatter formatter = DateTimeFormatter.ofPattern("hh:mm a");
-                        for (EntidadCita cita : horariosDisponibles) {
-                            mensaje.append("• ").append(cita.getHora().format(formatter)).append("\n");
-                        }
-                        mensaje.append("\n\nIndícame por favor, ¿A qué hora te gustaría tu cita?");
-                    }
+                        StringBuilder mensajeConfirmacionCita = new StringBuilder();
+                        mensajeConfirmacionCita.append("\n\nIndícame por favor para qué mes te gustaría tu cita");
+                        respuestaDevueltaTexto = mensajeConfirmacionCita.toString();
 
-                    respuestaDevueltaTexto = mensaje.toString();
                     break;
 
                 case "guardar_cita_base_datos":

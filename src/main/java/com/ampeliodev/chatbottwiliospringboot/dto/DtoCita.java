@@ -10,6 +10,9 @@ import java.util.List;
 public class DtoCita {
 
     private Long id;
+    private int dia;
+    private int mes;
+    private int anio;
     private java.time.LocalDate fecha;
     private java.time.LocalTime hora;
     private Boolean disponible;
@@ -27,6 +30,30 @@ public class DtoCita {
 
     public void setId(Long id) {
         this.id = id;
+    }
+
+    public int getDia() {
+        return dia;
+    }
+
+    public void setDia(int dia) {
+        this.dia = dia;
+    }
+
+    public int getMes() {
+        return mes;
+    }
+
+    public void setMes(int mes) {
+        this.mes = mes;
+    }
+
+    public int getAnio() {
+        return anio;
+    }
+
+    public void setAnio(int anio) {
+        this.anio = anio;
     }
 
     public LocalDate getFecha() {
@@ -106,6 +133,7 @@ public class DtoCita {
     }
 
     public void setEtapa(String etapa) {
-        etapa = etapa;
+        this.etapa = etapa;
     }
+
 }
